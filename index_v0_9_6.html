@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life XP v0.9.6 — Планер с баллами</title>
+<link rel="manifest" href="manifest.json">
+<meta id="metaThemeColor" name="theme-color" content="#0f172a">
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+:root[data-theme="dark"]{--bg:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--card:#111827;--surface:#0b1220;--border:#1f2937;--accent:#22c55e;--danger:#ef4444;--themeColor:#0f172a}
+:root[data-theme="light"]{--bg:#f5f7fb;--text:#0f172a;--muted:#6b7280;--card:#ffffff;--surface:#f9fafb;--border:#e5e7eb;--accent:#16a34a;--danger:#dc2626;--themeColor:#f5f7fb}
+:root[data-theme="forest"]{--bg:#0d1b16;--text:#e8f3ee;--muted:#8fb3a6;--card:#10231c;--surface:#0f2019;--border:#1d3a2f;--accent:#22c55e;--danger:#ef4444;--themeColor:#0d1b16}
+:root[data-theme="solar"]{--bg:#faf3e0;--text:#1f2937;--muted:#6b7280;--card:#ffffff;--surface:#fff7eb;--border:#f4d7a1;--accent:#fb923c;--danger:#dc2626;--themeColor:#faf3e0}
+:root[data-theme="neon"]{--bg:#090913;--text:#e6e6ff;--muted:#9aa0ff;--card:#0d0d21;--surface:#0a0a17;--border:#1a1a33;--accent:#a78bfa;--danger:#ff5c8a;--themeColor:#090913}
+body{background:var(--bg);color:var(--text)}
+.container{max-width:1200px;margin:0 auto;padding:16px}
+header{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+.brand{display:flex;gap:10px;align-items:center}.brand h1{margin:0;font-size:18px}
+.pill{border:1px solid var(--border);border-radius:999px;padding:4px 10px;color:var(--muted);background:var(--surface)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.tab{border:1px solid var(--border);border-radius:999px;padding:8px 12px;background:var(--surface);color:var(--muted);cursor:pointer}
+.tab.active{background:var(--accent);color:#052e1b;border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input,select,button{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px}
+.btn{cursor:pointer}.btn.primary{background:var(--accent);border-color:var(--accent);color:#052e1b}.btn.danger{background:var(--danger);border-color:#b91c1c;color:#fff}.btn.ghost{background:transparent}
+.task{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:6px}
+.tag{font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--muted)}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.col{min-height:220px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:10px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-cell{min-height:90px;border:1px solid var(--border);border-radius:8px;padding:6px;background:var(--surface)}
+.cal-day{font-size:12px;color:var(--muted)}
+canvas{width:100%;height:220px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.debug-strip{display:flex;gap:8px;align-items:center;border:1px dashed var(--border);padding:6px 10px;border-radius:10px;background:var(--surface)}
+.debug-dot{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid var(--border)}
+.empty{color:var(--muted);font-style:italic}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="brand">
+      <h1>Life XP — Планер с баллами</h1>
+      <span class="pill">v0.9.6 • офлайн off</span>
+      <span class="pill" id="themeEcho">Тема: dark</span>
+    </div>
+    <div class="row">
+      <select id="themeSelect"><option value="dark">Тёмная</option><option value="light">Светлая</option><option value="forest">Лес</option><option value="solar">Солнечная</option><option value="neon">Неон</option></select>
+      <button id="themeToggle" class="btn">Тема ↔</button>
+      <button id="resetCache" class="btn">Сбросить кэш</button>
+      <span class="pill debug-strip">
+        <b>Debug:</b> <span id="dbgTheme">dark</span> • <span>attr <code>data-theme</code> = <b id="dbgAttr">dark</b></span> •
+        <span>--themeColor → <span id="dbgColor" class="debug-dot"></span></span>
+      </span>
+    </div>
+    <div class="row"><button id="enableSW" class="btn">Включить офлайн (SW)</button></div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="tasks">Задачи</div>
+    <div class="tab" data-tab="kanban">Канбан</div>
+    <div class="tab" data-tab="calendar">Календарь</div>
+    <div class="tab" data-tab="reports">Отчёты</div>
+    <div class="tab" data-tab="backups">Бэкапы</div>
+  </div>
+
+  <section id="tab-tasks">
+    <div class="card">
+      <h2>Добавить задачу</h2>
+      <div class="row">
+        <input id="taskTitle" placeholder="Что нужно сделать?">
+        <input id="taskPoints" type="number" min="1" value="10" style="width:120px">
+        <select id="taskType"><option value="todo">Обычная</option><option value="daily">Дейлик</option><option value="habit">Привычка</option></select>
+        <input id="taskCategory" placeholder="Категория">
+        <button id="addTask" class="btn primary">Добавить</button>
+      </div>
+    </div>
+    <div class="card"><h2>Активные задачи</h2><div id="taskList"></div><div id="emptyTasks" class="empty" style="display:none">Пока задач нет.</div></div>
+  </section>
+
+  <section id="tab-kanban" style="display:none">
+    <div class="card">
+      <h2>Канбан</h2>
+      <div class="kanban">
+        <div class="col"><h3>Backlog</h3><div id="kanban-backlog"></div></div>
+        <div class="col"><h3>Today</h3><div id="kanban-today"></div></div>
+        <div class="col"><h3>Doing</h3><div id="kanban-doing"></div></div>
+        <div class="col"><h3>Done</h3><div id="kanban-done"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-calendar" style="display:none">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row"><button id="calPrev" class="btn">←</button><div id="calMonth" class="pill"></div><button id="calNext" class="btn">→</button></div>
+        <button id="calToday" class="btn ghost">Сегодня</button>
+      </div>
+      <div id="calendar" class="calendar"></div>
+    </div>
+  </section>
+
+  <section id="tab-reports" style="display:none">
+    <div class="card"><h2>XP за 7 дней</h2><canvas id="chart7"></canvas></div>
+    <div class="card"><h2>Суммарно по категориям</h2><canvas id="chartTotal"></canvas></div>
+  </section>
+
+  <section id="tab-backups" style="display:none">
+    <div class="card">
+      <h2>Локальные бэкапы</h2>
+      <div class="row"><button id="makeBackup" class="btn primary">Сделать бэкап</button><button id="purgeBackups" class="btn danger">Удалить всё</button></div>
+      <div id="backupsList"></div>
+      <div class="empty" id="emptyBackups" style="display:none">Бэкапов пока нет.</div>
+    </div>
+  </section>
+</div>
+
+<div id="snackbar" style="position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:var(--card);color:var(--text);border:1px solid var(--border);padding:10px 14px;border-radius:10px;display:none;z-index:2000"></div>
+
+<script>
+/* ====== Константы/утилиты ====== */
+const LS_KEY="life_xp_data_v096_min", BCK="life_xp_backups_v096_min";
+const el=id=>document.getElementById(id);
+function snack(msg){const s=el('snackbar');s.textContent=msg;s.style.display='block';setTimeout(()=>s.style.display='none',2000)}
+function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function escapeHtml(s){return String(s).replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function pickColor(key){let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))>>>0;return`hsl(${h%360} 70% 45%)`}
+
+/* ====== Тема ====== */
+const metaTheme=el('metaThemeColor'); const themeEcho=el('themeEcho');
+function applyTheme(name){const list=['dark','light','forest','solar','neon']; if(!list.includes(name)) name='dark'; document.documentElement.setAttribute('data-theme',name); themeEcho.textContent='Тема: '+name; const color=getComputedStyle(document.documentElement).getPropertyValue('--themeColor').trim()||'#0f172a'; document.getElementById('metaThemeColor').setAttribute('content',color); local.settings.theme=name; save(); renderDebug();}
+function renderDebug(){el('dbgTheme').textContent=local.settings.theme; el('dbgAttr').textContent=document.documentElement.getAttribute('data-theme'); const c=getComputedStyle(document.documentElement).getPropertyValue('--themeColor').trim()||'#0f172a'; const dot=document.getElementById('dbgColor'); dot.style.background=c; dot.title=c;}
+document.getElementById('themeSelect').onchange=e=>applyTheme(e.target.value);
+document.getElementById('themeToggle').onclick=()=>{const order=['dark','light','forest','solar','neon'];const cur=local.settings.theme;applyTheme(order[(order.indexOf(cur)+1)%order.length])};
+document.getElementById('resetCache').onclick=async()=>{if('serviceWorker'in navigator){const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs) await r.unregister();} if('caches'in window){const names=await caches.keys();await Promise.all(names.map(n=>caches.delete(n)));} snack('Кэш очищен. Ctrl+F5');}
+document.getElementById('enableSW').onclick=()=>{'serviceWorker'in navigator && navigator.serviceWorker.register('sw.js').then(()=>snack('Офлайн включён'))};
+
+/* ====== Хранилище ====== */
+const local = load();
+function load(){try{return Object.assign({settings:{theme:'dark'},tasks:[],history:[],backups:[]}, JSON.parse(localStorage.getItem(LS_KEY)||'{}'))}catch{return {settings:{theme:'dark'},tasks:[],history:[],backups:[]}}}
+function save(){localStorage.setItem(LS_KEY, JSON.stringify(local))}
+
+/* ====== Табы ====== */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');['tasks','kanban','calendar','reports','backups'].forEach(id=>{el('tab-'+id).style.display=(t.dataset.tab===id?'block':'none')}); if(t.dataset.tab==='kanban') renderKanban(); if(t.dataset.tab==='calendar') renderCalendar(); if(t.dataset.tab==='reports') renderReports(); if(t.dataset.tab==='backups') renderBackups();});
+
+/* ====== Задачи ====== */
+function taskRow(t){const div=document.createElement('div');div.className='task';const title=document.createElement('div');title.innerHTML=`<b>${escapeHtml(t.title)}</b> • XP ${t.points} • <span class="tag">${t.type}</span> ${t.category?'<span class="tag">'+escapeHtml(t.category)+'</span>':''}`;const act=document.createElement('div');const btn=document.createElement('button');btn.className='btn';btn.textContent='→ Kanban: '+t.status;btn.onclick=()=>{const ord=['backlog','today','doing','done'];t.status=ord[(ord.indexOf(t.status)+1)%ord.length];save();renderKanban();};act.appendChild(btn);div.appendChild(title);div.appendChild(act);return div;}
+function renderTasks(){const box=el('taskList');box.innerHTML='';const arr=local.tasks.filter(t=>!t.archived);el('emptyTasks').style.display=arr.length?'none':'block';arr.forEach(t=>box.appendChild(taskRow(t)))}
+document.getElementById('addTask').onclick=()=>{const title=(el('taskTitle').value||'').trim(); if(!title) return alert('Введите название'); const t={id:uid(),title,points:Math.max(1,Number(el('taskPoints').value||10)),type:el('taskType').value,category:(el('taskCategory').value||'').trim(),status:'backlog',archived:false}; local.tasks.unshift(t); save(); el('taskTitle').value=''; el('taskCategory').value=''; renderTasks(); renderKanban(); renderCalendar();}
+
+/* ====== Канбан ====== */
+function renderKanban(){['backlog','today','doing','done'].forEach(id=>{const box=el('kanban-'+id); if(!box) return; box.innerHTML=''; local.tasks.filter(t=>!t.archived && (t.status||'backlog')===id).forEach(t=>box.appendChild(taskRow(t)));});}
+
+/* ====== Календарь ====== */
+let calDate=new Date(); function fmtMonth(d){return d.toLocaleString(undefined,{month:'long',year:'numeric'})}
+function renderCalendar(){el('calMonth').textContent=fmtMonth(calDate);const cal=el('calendar');cal.innerHTML='';const first=new Date(calDate.getFullYear(),calDate.getMonth(),1);const start=(first.getDay()+6)%7;const days=new Date(calDate.getFullYear(),calDate.getMonth()+1,0).getDate();for(let i=0;i<start;i++){const ph=document.createElement('div');ph.className='cal-cell';cal.appendChild(ph)}for(let d=1;d<=days;d++){const cell=document.createElement('div');cell.className='cal-cell';const head=document.createElement('div');head.className='cal-day';head.textContent=d;cell.appendChild(head);local.tasks.filter(t=>!t.archived && t.due && t.due===`${calDate.getFullYear()}-${String(calDate.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`).forEach(t=>{const it=document.createElement('div');it.textContent=t.title;it.style.fontSize='12px';cell.appendChild(it)});cal.appendChild(cell)}}
+el('calPrev').onclick=()=>{calDate.setMonth(calDate.getMonth()-1);renderCalendar()}; el('calNext').onclick=()=>{calDate.setMonth(calDate.getMonth()+1);renderCalendar()}; el('calToday').onclick=()=>{calDate=new Date();calDate.setDate(1);renderCalendar()};
+
+/* ====== Отчёты ====== */
+function renderReports(){draw7();drawTotal();}
+function draw7(){const c=el('chart7');const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width=c.clientWidth,c.height=c.clientHeight);const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return d.toISOString().slice(0,10)}).reverse();const vals=days.map(ds=>local.history.filter(h=>h.day===ds).reduce((s,v)=>s+v.xp,0));const W=c.width,H=c.height,p=24,bw=(W-p*2)/7*.8,g=(W-p*2)/7*.2,max=Math.max(...vals,10);for(let i=0;i<7;i++){const x=p+i*(bw+g),h=vals[i]/max*(H-p*2),y=H-p-h;ctx.fillStyle='#4ade80';ctx.fillRect(x,y,bw,h)}ctx.strokeStyle='#888';ctx.beginPath();ctx.moveTo(p,H-p);ctx.lineTo(W-p,H-p);ctx.stroke()}
+function drawTotal(){const c=el('chartTotal');const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width=c.clientWidth,c.height=c.clientHeight);const totals={};local.history.forEach(h=>{const k=h.category||'Без категории';totals[k]=(totals[k]||0)+h.xp});const cats=Object.keys(totals),vals=cats.map(k=>totals[k]);const W=c.width,H=c.height,p=24,bw=(W-p*2)/Math.max(1,cats.length)*.7,g=(W-p*2)/Math.max(1,cats.length)*.3,max=Math.max(...vals,10);cats.forEach((cc,i)=>{const x=p+i*(bw+g),h=vals[i]/max*(H-p*2),y=H-p-h;ctx.fillStyle=pickColor(cc);ctx.fillRect(x,y,bw,h);ctx.fillStyle='#aaa';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText(cc,x+bw/2,H-p+14)})}
+
+/* ====== Бэкапы ====== */
+function renderBackups(){const list=el('backupsList');list.innerHTML='';const arr=localStorage.getItem(BCK)?JSON.parse(localStorage.getItem(BCK)):[];el('emptyBackups').style.display=arr.length?'none':'block';arr.forEach(b=>{const row=document.createElement('div');row.className='task';row.innerHTML=`<div><b>${new Date(b.ts).toLocaleString()}</b> • ${b.size} байт</div>`;const act=document.createElement('div');const dl=document.createElement('button');dl.className='btn';dl.textContent='Скачать';dl.onclick=()=>{const blob=new Blob([b.data],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`life_xp_backup_${b.ts}.json`;a.click();URL.revokeObjectURL(url)};act.appendChild(dl);row.appendChild(act);list.appendChild(row)})}
+el('makeBackup').onclick=()=>{const data=JSON.stringify(local);const arr=localStorage.getItem(BCK)?JSON.parse(localStorage.getItem(BCK)):[];arr.unshift({ts:Date.now(),size:data.length,data});localStorage.setItem(BCK,JSON.stringify(arr.slice(0,20)));snack('Бэкап создан');renderBackups()}
+el('purgeBackups').onclick=()=>{localStorage.removeItem(BCK);renderBackups();snack('Бэкапы удалены')}
+
+/* ====== Инициализация ====== */
+applyTheme(local.settings.theme||'dark'); renderTasks(); renderKanban(); renderCalendar();
+</script>
+</body>
+</html>
